@@ -42,6 +42,14 @@ Navigate to the project folder, open PowerShell, and run:
 
 Follow the prompts to configure a project. You should run this script once for each project you want to set up. This script creates config files under `configs/` which you can safely edit.
 
+If you want to have specific infos in the description of the build on Steam (only visible to developers; can be helpful identifying your builds), use the following placeholders when entering the description during setup:
+
+  * $buildNumber$
+  * $fileName$
+  * $commitId$
+  * $commitMessage$
+  * $scmBranch$
+
 Next we must disable Steam Guard. To do so run:
 
     Upload-SteamContent.ps1
