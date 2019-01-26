@@ -8,12 +8,13 @@ using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Timers;
 
 namespace BuildUploader.Console {
   class Program {
-    private static Timer timer;
+    private static System.Timers.Timer timer;
     private static string pollingFrequencyRaw;
     private static int pollingFrequency;
 
@@ -25,16 +26,35 @@ namespace BuildUploader.Console {
 
       ScanForNewBuilds(null, null);
 
-      timer = new Timer();
+      timer = new System.Timers.Timer();
       timer.Interval = pollingFrequency;
       timer.Elapsed += ScanForNewBuilds;
       timer.Start();
 
-      System.Console.Write("Press any key to exit... ");
-      System.Console.ReadKey();
+      System.Console.WriteLine("Press Esapce to exit, R to rescan for new builds... ");
+      bool isRunning = true;
+      while (isRunning) {
+        var key = System.Console.ReadKey(true);
+        switch (key.Key) {
+          case ConsoleKey.Escape:
+            isRunning = false;
+            break;
+          case ConsoleKey.R:
+            timer.Stop();
+            ScanForNewBuilds();
+            timer.Start();
+            break;
+          default:
+            System.Console.WriteLine("Press (Esc) to exit, (R) to rescan for new builds... ");
+            break;
+        }
+      }
     }
 
     private static void ScanForNewBuilds(object sender, ElapsedEventArgs e) {
+      ScanForNewBuilds();
+    }
+    private static void ScanForNewBuilds() {
       Trace.TraceInformation("Scanning for new Unity Cloud Builds at {0:MM/dd/yy H:mm}", DateTime.Now);
       System.Console.WriteLine();
 
@@ -158,7 +178,7 @@ namespace BuildUploader.Console {
     private static void BuildFinalAppScript(SteamSettings steamSettings, BuildDefinition buildDefinition) {
       var steamworksDir = ConfigurationSettings.AppSettings["STEAMWORKS_DIRECTORY"];
       var appScriptTemplatePath = Path.Combine(steamworksDir, "scripts", steamSettings.AppScriptTemplate);
-      if(File.Exists(appScriptTemplatePath)) {
+      if (File.Exists(appScriptTemplatePath)) {
         var allText = File.ReadAllText(appScriptTemplatePath);
         allText = allText.Replace("$buildNumber$", buildDefinition.BuildNumber.ToString());
         allText = allText.Replace("$fileName$", buildDefinition.FileName);
