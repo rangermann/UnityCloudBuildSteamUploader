@@ -7,5 +7,8 @@ namespace BuildUploader.Console {
 
     [JsonProperty("steam")]
     public SteamSettings SteamSettings { get; internal set; }
+
+    [JsonProperty("slack")]
+    public SlackSettings SlackSettings { get; internal set; }
   }
 }

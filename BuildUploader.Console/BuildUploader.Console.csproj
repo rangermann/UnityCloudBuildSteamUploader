@@ -48,6 +48,7 @@
   <ItemGroup>
     <Compile Include="BuildDefinition.cs" />
     <Compile Include="BuildConfiguration.cs" />
+    <Compile Include="SlackSettings.cs" />
     <Compile Include="SteamSettings.cs" />
     <Compile Include="UnityCloudBuildSettings.cs" />
     <Compile Include="Program.cs" />

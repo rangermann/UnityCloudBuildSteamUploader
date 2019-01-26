@@ -74,7 +74,7 @@ namespace BuildUploader.Console {
           var successfullyDownloadedBuild = DownloadUnityCloudBuild(buildConfig.SteamSettings, latestBuild);
           if (successfullyDownloadedBuild) {
             bool success = UploadBuildToSteamworks(buildConfig.SteamSettings, latestBuild);
-            TryNotifySlack(buildConfig.SteamSettings, latestBuild, success);
+            TryNotifySlack(buildConfig.SlackSettings, buildConfig.SteamSettings, latestBuild, success);
           }
         }
 
@@ -89,8 +89,11 @@ namespace BuildUploader.Console {
           DateTime.Now + TimeSpan.FromMilliseconds(pollingFrequency));
     }
 
-    private static void TryNotifySlack(SteamSettings steamSettings, BuildDefinition latestBuild, bool success) {
+    private static void TryNotifySlack(SlackSettings slackSettings, SteamSettings steamSettings, BuildDefinition latestBuild, bool success) {
       var slackUrl = ConfigurationSettings.AppSettings["SLACK_NOTIFICATION_URL"];
+      if(slackSettings != null) {
+        slackUrl = slackSettings.Url;
+      }
       if (!string.IsNullOrEmpty(slackUrl)) {
         Trace.TraceInformation("Sending Slack notification");
         string payload;
