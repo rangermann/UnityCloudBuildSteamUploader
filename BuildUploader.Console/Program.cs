@@ -53,7 +53,7 @@ namespace BuildUploader.Console {
         if (latestBuild != null) {
           var successfullyDownloadedBuild = DownloadUnityCloudBuild(buildConfig.SteamSettings, latestBuild);
           if (successfullyDownloadedBuild) {
-            bool success = UploadBuildToSteamworks(buildConfig.SteamSettings);
+            bool success = UploadBuildToSteamworks(buildConfig.SteamSettings, latestBuild);
             TryNotifySlack(buildConfig.SteamSettings, latestBuild, success);
           }
         }
@@ -99,8 +99,11 @@ namespace BuildUploader.Console {
       }
     }
 
-    private static bool UploadBuildToSteamworks(SteamSettings steamSettings) {
+    private static bool UploadBuildToSteamworks(SteamSettings steamSettings, BuildDefinition buildDefinition) {
       var steamworksDir = ConfigurationSettings.AppSettings["STEAMWORKS_DIRECTORY"];
+
+      ReplaceAppScriptPlaceholders(steamSettings, buildDefinition);
+
       Trace.TraceInformation("Invoking Steamworks SDK to upload build");
       string command = string.Format(
           @"{0}\Publish-Build.bat {1} ""{2}"" {3} {4} ""{5}""",
@@ -144,6 +147,19 @@ namespace BuildUploader.Console {
       process.Close();
 
       return exitCode == 0;
+    }
+
+    private static void ReplaceAppScriptPlaceholders(SteamSettings steamSettings, BuildDefinition buildDefinition) {
+      var steamworksDir = ConfigurationSettings.AppSettings["STEAMWORKS_DIRECTORY"];
+      var appScriptPath = Path.Combine(steamworksDir, "scripts", steamSettings.AppScript);
+      if(File.Exists(appScriptPath)) {
+        var allText = File.ReadAllText(appScriptPath);
+        allText = allText.Replace("$buildNumber$", buildDefinition.BuildNumber.ToString());
+        allText = allText.Replace("$fileName$", buildDefinition.FileName);
+        File.WriteAllText(appScriptPath, allText);
+      } else {
+        Trace.TraceError("App Script not found {0}", appScriptPath);
+      }
     }
 
     private static bool DownloadUnityCloudBuild(SteamSettings steamSettings, BuildDefinition latestBuild) {
