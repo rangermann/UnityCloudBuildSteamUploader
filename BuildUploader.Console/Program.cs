@@ -102,7 +102,7 @@ namespace BuildUploader.Console {
     private static bool UploadBuildToSteamworks(SteamSettings steamSettings, BuildDefinition buildDefinition) {
       var steamworksDir = ConfigurationSettings.AppSettings["STEAMWORKS_DIRECTORY"];
 
-      ReplaceAppScriptPlaceholders(steamSettings, buildDefinition);
+      BuildFinalAppScript(steamSettings, buildDefinition);
 
       Trace.TraceInformation("Invoking Steamworks SDK to upload build");
       string command = string.Format(
@@ -138,7 +138,7 @@ namespace BuildUploader.Console {
 
       Trace.TraceInformation(output);
       if (exitCode == 0) {
-        Trace.TraceInformation("Steaworks SDK finished successfully");
+        Trace.TraceInformation("Steamworks SDK finished successfully");
       } else {
         Trace.TraceError(error);
         Trace.TraceError("Steamworks SDK failed");
@@ -146,19 +146,32 @@ namespace BuildUploader.Console {
 
       process.Close();
 
+      var appScriptPath = Path.Combine(steamworksDir, "scripts", steamSettings.AppScript);
+      if (File.Exists(appScriptPath)) {
+        Trace.TraceInformation("Removing temporary App Script file");
+        File.Delete(appScriptPath);
+      }
+
       return exitCode == 0;
     }
 
-    private static void ReplaceAppScriptPlaceholders(SteamSettings steamSettings, BuildDefinition buildDefinition) {
+    private static void BuildFinalAppScript(SteamSettings steamSettings, BuildDefinition buildDefinition) {
       var steamworksDir = ConfigurationSettings.AppSettings["STEAMWORKS_DIRECTORY"];
-      var appScriptPath = Path.Combine(steamworksDir, "scripts", steamSettings.AppScript);
-      if(File.Exists(appScriptPath)) {
-        var allText = File.ReadAllText(appScriptPath);
+      var appScriptTemplatePath = Path.Combine(steamworksDir, "scripts", steamSettings.AppScriptTemplate);
+      if(File.Exists(appScriptTemplatePath)) {
+        var allText = File.ReadAllText(appScriptTemplatePath);
         allText = allText.Replace("$buildNumber$", buildDefinition.BuildNumber.ToString());
         allText = allText.Replace("$fileName$", buildDefinition.FileName);
+        allText = allText.Replace("$commitId$", buildDefinition.CommitId);
+        allText = allText.Replace("$commitMessage$", buildDefinition.CommitMessage);
+        allText = allText.Replace("$scmBranch$", buildDefinition.ScmBranch);
+
+        steamSettings.AppScript = steamSettings.AppScriptTemplate.Replace("template", buildDefinition.BuildNumber.ToString());
+        var appScriptPath = Path.Combine(steamworksDir, "scripts", steamSettings.AppScript);
         File.WriteAllText(appScriptPath, allText);
+
       } else {
-        Trace.TraceError("App Script not found {0}", appScriptPath);
+        Trace.TraceError("App Script Template not found {0}", appScriptTemplatePath);
       }
     }
 
@@ -229,7 +242,10 @@ namespace BuildUploader.Console {
             latestBuild = new BuildDefinition() {
               BuildNumber = build.build,
               DownloadUrl = build.links.download_primary.href,
-              FileName = build.build + "_" + cloudBuildSettings.ProjectName + "_" + build.buildtargetid + '.' + build.links.download_primary.meta.type,
+              FileName = build.build + "_" + cloudBuildSettings.ProjectName + "_" + build.buildtargetid + "_" + build.scmBranch + '.' + build.links.download_primary.meta.type,
+              CommitId = build.changeset[0].commitId,
+              CommitMessage = build.changeset[0].message,
+              ScmBranch = build.scmBranch,
             };
           }
         }

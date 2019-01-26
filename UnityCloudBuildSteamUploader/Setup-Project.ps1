@@ -19,7 +19,7 @@ $cloudBuildTargetName = Read-Host 'Unity Cloud Build Target Name'
 $steamworksDir = 'Steamworks_SDK'
 $scriptsDir = "${steamworksDir}\scripts"
 $projectPrefix = "${cloudBuildProject}_${cloudBuildTargetName}"
-$appScriptName = "${projectPrefix}_app_build_${appId}.vdf"
+$appScriptName = "${projectPrefix}_app_build_${appId}_template.vdf"
 $depotScriptName = "${projectPrefix}_depot_build_depot_build_${depotId}"
 $contentDir = "${steamworksDir}\content\${projectPrefix}_content"
 
@@ -94,7 +94,7 @@ Set-Content "configs/${projectPrefix}_config.json" @"
         "branch_name": "$buildBranch",
         "username": "$steamUsername",
         "password": "$plainPassword",
-        "app_script": "$appScriptName",
+        "app_script_template": "$appScriptName",
         "content_dir": "$jsonContentDir",
         "exe_path": "$jsonContentDir\\$exeName"
     }

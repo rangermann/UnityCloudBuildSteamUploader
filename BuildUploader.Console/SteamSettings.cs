@@ -17,7 +17,9 @@ namespace BuildUploader.Console {
     [JsonProperty("password")]
     public string Password { get; internal set; }
 
-    [JsonProperty("app_script")]
+    [JsonProperty("app_script_template")]
+    public string AppScriptTemplate { get; internal set; }
+
     public string AppScript { get; internal set; }
 
     [JsonProperty("content_dir")]
