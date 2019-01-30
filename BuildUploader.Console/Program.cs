@@ -17,6 +17,7 @@ namespace BuildUploader.Console {
     private static System.Timers.Timer timer;
     private static string pollingFrequencyRaw;
     private static int pollingFrequency;
+    private static string lastSteamErrorMessage;
 
     static void Main(string[] args) {
       Trace.Listeners.Add(new ConsoleTraceListener());
@@ -74,7 +75,7 @@ namespace BuildUploader.Console {
           var successfullyDownloadedBuild = DownloadUnityCloudBuild(buildConfig.SteamSettings, latestBuild);
           if (successfullyDownloadedBuild) {
             bool success = UploadBuildToSteamworks(buildConfig.SteamSettings, latestBuild);
-            TryNotifySlack(buildConfig.SlackSettings, buildConfig.SteamSettings, latestBuild, success);
+            TryNotifySlack(buildConfig.SlackSettings, buildConfig.SteamSettings, latestBuild, success, lastSteamErrorMessage);
           }
         }
 
@@ -89,7 +90,7 @@ namespace BuildUploader.Console {
           DateTime.Now + TimeSpan.FromMilliseconds(pollingFrequency));
     }
 
-    private static void TryNotifySlack(SlackSettings slackSettings, SteamSettings steamSettings, BuildDefinition latestBuild, bool success) {
+    private static void TryNotifySlack(SlackSettings slackSettings, SteamSettings steamSettings, BuildDefinition latestBuild, bool success, string errorMessage) {
       var slackUrl = ConfigurationSettings.AppSettings["SLACK_NOTIFICATION_URL"];
       if(slackSettings != null) {
         slackUrl = slackSettings.Url;
@@ -105,10 +106,11 @@ namespace BuildUploader.Console {
             steamSettings.BranchName ?? "default");
         } else {
           payload = string.Format(
-            "Failed to upload {0} build {1:N0} to Steam.",
+            "Failed to upload {0} build {1:N0} to the {2} branch on Steam: \n{3}",
             steamSettings.DisplayName,
             latestBuild.BuildNumber,
-            steamSettings.BranchName ?? "default");
+            steamSettings.BranchName ?? "default",
+            errorMessage ?? "Unknown error");
         }
 
         var message = @"{""text"": """ + payload + @"""}";
@@ -124,6 +126,8 @@ namespace BuildUploader.Console {
 
     private static bool UploadBuildToSteamworks(SteamSettings steamSettings, BuildDefinition buildDefinition) {
       var steamworksDir = ConfigurationSettings.AppSettings["STEAMWORKS_DIRECTORY"];
+
+      lastSteamErrorMessage = null;
 
       BuildFinalAppScript(steamSettings, buildDefinition);
 
@@ -156,6 +160,7 @@ namespace BuildUploader.Console {
       // Warning: This approach can lead to deadlocks, see Edit #2
       string output = process.StandardOutput.ReadToEnd();
       string error = process.StandardError.ReadToEnd();
+      lastSteamErrorMessage = output + "\n" + error;
 
       exitCode = process.ExitCode;
 
