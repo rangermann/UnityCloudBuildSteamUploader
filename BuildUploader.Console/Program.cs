@@ -267,12 +267,14 @@ namespace BuildUploader.Console {
           int buildNumber = build.build;
           if (latestBuild == null || latestBuildNumber < buildNumber) {
             latestBuildNumber = buildNumber;
+            var commitId = build.changeset.Count > 0 ? build.changeset[0].commitId : build.lastBuiltRevision;
+            var commitMessage = build.changeset.Count > 0 ? build.changeset[0].message : string.Empty;
             latestBuild = new BuildDefinition() {
               BuildNumber = build.build,
               DownloadUrl = build.links.download_primary.href,
               FileName = build.build + "_" + cloudBuildSettings.ProjectName + "_" + build.buildtargetid + "_" + build.scmBranch + '.' + build.links.download_primary.meta.type,
-              CommitId = build.changeset[0].commitId,
-              CommitMessage = build.changeset[0].message,
+              CommitId = commitId,
+              CommitMessage = commitMessage,
               ScmBranch = build.scmBranch,
             };
           }
