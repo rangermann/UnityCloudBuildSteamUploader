@@ -96,7 +96,8 @@ Set-Content "configs/${projectPrefix}_config.json" @"
         "password": "$plainPassword",
         "app_script_template": "$appScriptName",
         "content_dir": "$jsonContentDir",
-        "exe_path": "$jsonContentDir\\$exeName"
+        "exe_path": "$jsonContentDir\\$exeName",
+        "use_drm": "true",
     }
 }
 "@
