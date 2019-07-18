@@ -72,10 +72,16 @@ namespace BuildUploader.Console {
         var latestBuild = downloadBuildDataTask.Result;
 
         if (latestBuild != null) {
-          var successfullyDownloadedBuild = DownloadUnityCloudBuild(buildConfig.SteamSettings, latestBuild);
-          if (successfullyDownloadedBuild) {
-            bool success = UploadBuildToSteamworks(buildConfig.SteamSettings, latestBuild);
-            TryNotifySlack(buildConfig.SlackSettings, buildConfig.SteamSettings, latestBuild, success, lastSteamErrorMessage);
+          int previousBuild = GetPreviousBuildNumber(buildConfig);
+          if (latestBuild.BuildNumber > previousBuild) {
+            var successfullyDownloadedBuild = DownloadUnityCloudBuild(buildConfig.SteamSettings, latestBuild);
+            if (successfullyDownloadedBuild) {
+              PersistBuildNumber(buildConfig, latestBuild);
+              bool success = UploadBuildToSteamworks(buildConfig.SteamSettings, latestBuild);
+              TryNotifySlack(buildConfig.SlackSettings, buildConfig.SteamSettings, latestBuild, success, lastSteamErrorMessage);
+            }
+          } else {
+            Trace.TraceInformation("Build {0} already processed", previousBuild);
           }
         }
 
@@ -90,9 +96,31 @@ namespace BuildUploader.Console {
           DateTime.Now + TimeSpan.FromMilliseconds(pollingFrequency));
     }
 
+    private static string GetLastProcessedFilePath(BuildConfiguration buildConfig) {
+      var downloadDirectory = ConfigurationSettings.AppSettings["DOWNLOAD_DIRECTORY"];
+      return Path.Combine(downloadDirectory, buildConfig.UnitySettings.OrganizationID + "_" + buildConfig.UnitySettings.ProjectName + "_" + buildConfig.UnitySettings.TargetId + "_lastprocessed.txt");
+    }
+
+    private static void PersistBuildNumber(BuildConfiguration buildConfig, BuildDefinition buildDefinition) {
+      var buildInfoPath = GetLastProcessedFilePath(buildConfig);
+      File.WriteAllText(buildInfoPath, buildDefinition.BuildNumber.ToString());
+    }
+
+    private static int GetPreviousBuildNumber(BuildConfiguration buildConfig) {
+      var buildNumber = -1;
+      
+      var previousBuildPath = GetLastProcessedFilePath(buildConfig);
+      if (File.Exists(previousBuildPath)) {
+        var buildInfo = File.ReadAllText(previousBuildPath);
+        int.TryParse(buildInfo, out buildNumber);
+      }
+
+      return buildNumber;
+    }
+
     private static void TryNotifySlack(SlackSettings slackSettings, SteamSettings steamSettings, BuildDefinition latestBuild, bool success, string errorMessage) {
       var slackUrl = ConfigurationSettings.AppSettings["SLACK_NOTIFICATION_URL"];
-      if(slackSettings != null) {
+      if (slackSettings != null) {
         slackUrl = slackSettings.Url;
       }
       if (!string.IsNullOrEmpty(slackUrl)) {
@@ -133,13 +161,14 @@ namespace BuildUploader.Console {
 
       Trace.TraceInformation("Invoking Steamworks SDK to upload build");
       string command = string.Format(
-          @"{0}\Publish-Build.bat {1} ""{2}"" {3} {4} ""{5}""",
+          @"{0}\Publish-Build.bat {1} ""{2}"" {3} {4} ""{5}"" {6}",
           steamworksDir,
           steamSettings.Username,
           steamSettings.Password,
           steamSettings.AppId,
           steamSettings.AppScript,
-          Environment.CurrentDirectory + "\\" + steamSettings.ExecutablePath);
+          Environment.CurrentDirectory + "\\" + steamSettings.ExecutablePath,
+          steamSettings.UseDRM);
 
       int exitCode;
       ProcessStartInfo processInfo;
@@ -207,7 +236,7 @@ namespace BuildUploader.Console {
       bool success = true;
       Trace.TraceInformation("Checking whether latest build has already been processed");
       var downloadDir = ConfigurationSettings.AppSettings["DOWNLOAD_DIRECTORY"];
-      var filePath = downloadDir + "/" + latestBuild.FileName;
+      var filePath = Path.Combine(downloadDir, latestBuild.FileName);
       if (File.Exists(filePath)) {
         Trace.TraceInformation("Build already processed");
         success = false;
@@ -228,6 +257,10 @@ namespace BuildUploader.Console {
         Trace.TraceInformation("Unzipping build");
         ZipFile.ExtractToDirectory(filePath, steamSettings.ContentDir);
         Trace.TraceInformation("Unzipped build");
+
+        Trace.TraceInformation("Deleting download {0}", filePath);
+        File.Delete(filePath);
+
         success = true;
       }
 
