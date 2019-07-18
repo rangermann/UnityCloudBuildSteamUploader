@@ -27,5 +27,8 @@ namespace BuildUploader.Console {
 
     [JsonProperty("exe_path")]
     public string ExecutablePath { get; internal set; }
+
+    [JsonProperty("use_drm")]
+    public string UseDRM { get; internal set; }
   }
 }
