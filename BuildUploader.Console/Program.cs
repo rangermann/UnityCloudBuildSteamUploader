@@ -98,7 +98,10 @@ namespace BuildUploader.Console {
 
     private static string GetLastProcessedFilePath(BuildConfiguration buildConfig) {
       var downloadDirectory = ConfigurationSettings.AppSettings["DOWNLOAD_DIRECTORY"];
-      return Path.Combine(downloadDirectory, buildConfig.UnitySettings.OrganizationID + "_" + buildConfig.UnitySettings.ProjectName + "_" + buildConfig.UnitySettings.TargetId + "_lastprocessed.txt");
+
+      var fileName = string.Format("{0}_{1}_{2}_{3}_{4}_lastprocessed.txt", buildConfig.UnitySettings.OrganizationID, buildConfig.UnitySettings.ProjectName, buildConfig.UnitySettings.TargetId, buildConfig.SteamSettings.AppId, buildConfig.SteamSettings.BranchName);
+
+      return Path.Combine(downloadDirectory, fileName);
     }
 
     private static void PersistBuildNumber(BuildConfiguration buildConfig, BuildDefinition buildDefinition) {
@@ -108,7 +111,7 @@ namespace BuildUploader.Console {
 
     private static int GetPreviousBuildNumber(BuildConfiguration buildConfig) {
       var buildNumber = -1;
-      
+
       var previousBuildPath = GetLastProcessedFilePath(buildConfig);
       if (File.Exists(previousBuildPath)) {
         var buildInfo = File.ReadAllText(previousBuildPath);
